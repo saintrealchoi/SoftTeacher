@@ -16,6 +16,8 @@ from mmdet.models import build_detector
 
 from ssod.utils import patch_config
 
+from sahi.model import MmdetDetectionModel
+from sahi.predict import get_prediction, get_sliced_prediction, predict
 
 def parse_args():
     parser = argparse.ArgumentParser(description="MMDet test (and eval) a model")
@@ -203,6 +205,14 @@ def main():
     # build the model and load checkpoint
     cfg.model.train_cfg = None
     model = build_detector(cfg.model, test_cfg=cfg.get("test_cfg"))
+    # sahi model build
+    model2 = MmdetDetectionModel(
+        model_path=args.checkpoint,
+        config_path=cfg,
+        confidence_threshold=0.05,
+        device=args.device,
+    )
+
     fp16_cfg = cfg.get("fp16", None)
     if fp16_cfg is not None:
         wrap_fp16_model(model)
@@ -224,6 +234,7 @@ def main():
     else:
         model = MMDistributedDataParallel(
             model.cuda(),
+            model2,
             device_ids=[torch.cuda.current_device()],
             broadcast_buffers=False,
         )
