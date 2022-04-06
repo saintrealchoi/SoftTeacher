@@ -210,7 +210,7 @@ def main():
         model_path=args.checkpoint,
         config_path=cfg,
         confidence_threshold=0.05,
-        device=args.device,
+        device=torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     )
 
     fp16_cfg = cfg.get("fp16", None)
@@ -234,11 +234,10 @@ def main():
     else:
         model = MMDistributedDataParallel(
             model.cuda(),
-            model2,
             device_ids=[torch.cuda.current_device()],
             broadcast_buffers=False,
         )
-        outputs = multi_gpu_test(model, data_loader, args.tmpdir, args.gpu_collect)
+        outputs = multi_gpu_test(model, model2, data_loader, args.tmpdir, args.gpu_collect)
 
     rank, _ = get_dist_info()
     if rank == 0:
