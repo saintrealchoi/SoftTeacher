@@ -147,9 +147,16 @@ The core idea is to convert a new dataset to coco format. Details about it can b
 
 
 ### Evaluation
+
+**Add [sahi](https://github.com/obss/sahi) inference**
+
+- before sahi inference, you should cp `test.py` api to `mmdet/apis/test.py`
+
 ```
 bash tools/dist_test.sh <CONFIG_FILE_PATH> <CHECKPOINT_PATH> <NUM_GPUS> --eval bbox --cfg-options model.test_cfg.rcnn.score_thr=<THR>
 ```
+
+
 ### Inference
   To inference with trained model and visualize the detection results:
 
