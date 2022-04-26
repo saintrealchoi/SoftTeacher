@@ -1,8 +1,8 @@
 _base_ = "base.py"
 
 data = dict(
-    samples_per_gpu=5,
-    workers_per_gpu=5,
+    samples_per_gpu=4,
+    workers_per_gpu=1,
     train=dict(
         sup=dict(
             type="CocoDataset",
@@ -23,7 +23,7 @@ data = dict(
 )
 
 fold = 1
-percent = 1
+percent = 10
 
 work_dir = "work_dirs/${cfg_name}/${percent}/${fold}"
 log_config = dict(

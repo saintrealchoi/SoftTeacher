@@ -48,8 +48,8 @@ def single_gpu_test(model,
             result = get_sliced_prediction(
                 data['img_metas'][0].data[0][0]['filename'],
                 model2,
-                slice_height = 256,
-                slice_width = 256,
+                slice_height = 512,
+                slice_width = 512,
                 overlap_height_ratio=0.2,
                 overlap_width_ratio=0.2
             )
@@ -129,8 +129,8 @@ def multi_gpu_test(model, model2, data_loader, tmpdir=None, gpu_collect=False):
             result = get_sliced_prediction(
                 data['img_metas'][0].data[0][0]['filename'],
                 model2,
-                slice_height = 256,
-                slice_width = 256,
+                slice_height = 512,
+                slice_width = 512,
                 overlap_height_ratio=0.2,
                 overlap_width_ratio=0.2
             )

@@ -18,6 +18,7 @@ from ssod.utils import patch_config
 
 from sahi.model import MmdetDetectionModel
 from sahi.predict import get_prediction, get_sliced_prediction, predict
+import pickle
 
 def parse_args():
     parser = argparse.ArgumentParser(description="MMDet test (and eval) a model")
@@ -209,7 +210,7 @@ def main():
     model2 = MmdetDetectionModel(
         model_path=args.checkpoint,
         config_path=cfg,
-        confidence_threshold=0.10,
+        confidence_threshold=0.1,
         device=torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     )
 
@@ -237,17 +238,19 @@ def main():
             device_ids=[torch.cuda.current_device()],
             broadcast_buffers=False,
         )
-        outputs = multi_gpu_test(model, model2, data_loader, args.tmpdir, args.gpu_collect)
+        # outputs = multi_gpu_test(model, model2, data_loader, args.tmpdir, args.gpu_collect)
     
     rank, _ = get_dist_info()
     if rank == 0:
-        mmcv.dump(outputs, "/home/choisj/Desktop/outputs_sahi_10.pkl")
+        # mmcv.dump(outputs, "/home/choisj/Desktop/outputs.pkl")
+        with open('/home/choisj/Desktop/outputs.pkl', 'rb') as f:
+            outputs = pickle.load(f)
         if args.out:
             print(f"\nwriting results to {args.out}")
             mmcv.dump(outputs, args.out)
         kwargs = {} if args.eval_options is None else args.eval_options
-        if args.format_only:
-            dataset.format_results(outputs, **kwargs)
+        # if args.format_only:
+        #     dataset.format_results(outputs, **kwargs)
         if args.eval:
             eval_kwargs = cfg.get("evaluation", {}).copy()
             # hard-code way to remove EvalHook args
