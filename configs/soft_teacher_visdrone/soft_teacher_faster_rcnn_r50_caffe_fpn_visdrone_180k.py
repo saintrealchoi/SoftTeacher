@@ -1,17 +1,22 @@
 _base_ = "base.py"
 
+classes = ('ignored_regions','pedestrian','people','bicycle','car','van','truck','tricycle','awning-tricycle','bus','motor','others')
+data_root = 'data/VisDrone/'
+
 data = dict(
     samples_per_gpu=4,
     workers_per_gpu=1,
     train=dict(
         sup=dict(
-            type="VisDroneDataset",
-            ann_file="data/coco/annotations/semi_supervised/instances_train2017.${fold}@${percent}.json",
+            type="CocoDataset",
+            classes = classes,
+            ann_file="data/VisDrone/annotations/semi_supervised/instances_train2021.${fold}@${percent}.json",
             img_prefix="data/VisDrone/VisDrone2019-DET-train/images",
         ),
         unsup=dict(
-            type="VisDroneDataset",
-            ann_file="data/coco/annotations/semi_supervised/instances_train2017.${fold}@${percent}-unlabeled.json",
+            type="CocoDataset",
+            classes = classes,
+            ann_file="data/VisDrone/annotations/semi_supervised/instances_train2021.${fold}@${percent}-unlabeled.json",
             img_prefix="data/VisDrone/VisDrone2019-DET-train/images",
         ),
     ),
