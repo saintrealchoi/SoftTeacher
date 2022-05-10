@@ -14,7 +14,28 @@ model = dict(
         init_cfg=dict(
             type="Pretrained", checkpoint="open-mmlab://detectron2/resnet50_caffe"
         ),
-    )
+    ),
+    roi_head=dict(
+        type='StandardRoIHead',
+        bbox_roi_extractor=dict(
+            type='SingleRoIExtractor',
+            roi_layer=dict(type='RoIAlign', output_size=7, sampling_ratio=0),
+            out_channels=256,
+            featmap_strides=[4, 8, 16, 32]),
+        bbox_head=dict(
+            type='Shared2FCBBoxHead',
+            in_channels=256,
+            fc_out_channels=1024,
+            roi_feat_size=7,
+            num_classes=10,
+            bbox_coder=dict(
+                type='DeltaXYWHBBoxCoder',
+                target_means=[0., 0., 0., 0.],
+                target_stds=[0.1, 0.1, 0.2, 0.2]),
+            reg_class_agnostic=False,
+            loss_cls=dict(
+                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
+            loss_bbox=dict(type='L1Loss', loss_weight=1.0))),
 )
 
 img_norm_cfg = dict(mean=[103.530, 116.280, 123.675], std=[1.0, 1.0, 1.0], to_rgb=False)
@@ -258,11 +279,11 @@ custom_hooks = [
     dict(type="WeightSummary"),
     dict(type="MeanTeacher", momentum=0.999, interval=1, warm_up=0),
 ]
-evaluation = dict(type="SubModulesDistEvalHook", interval=4000)
-optimizer = dict(type="SGD", lr=0.01, momentum=0.9, weight_decay=0.0001)
-lr_config = dict(step=[120000, 160000])
-runner = dict(_delete_=True, type="IterBasedRunner", max_iters=180000)
-checkpoint_config = dict(by_epoch=False, interval=4000, max_keep_ckpts=20)
+evaluation = dict(type="SubModulesDistEvalHook", interval=400)
+optimizer = dict(type="SGD", lr=0.001, momentum=0.9, weight_decay=0.0001)
+lr_config = dict(step=[5600, 6400])
+runner = dict(_delete_=True, type="IterBasedRunner", max_iters=8000)
+checkpoint_config = dict(by_epoch=False, interval=400, max_keep_ckpts=20)
 
 fp16 = dict(loss_scale="dynamic")
 

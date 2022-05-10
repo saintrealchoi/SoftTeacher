@@ -1,11 +1,11 @@
 _base_ = "base.py"
 
-classes = ('ignored_regions','pedestrian','people','bicycle','car','van','truck','tricycle','awning-tricycle','bus','motor','others')
+classes = ('pedestrian','people','bicycle','car','van','truck','tricycle','awning-tricycle','bus','motor')
 data_root = 'data/VisDrone/'
 
 data = dict(
-    samples_per_gpu=4,
-    workers_per_gpu=1,
+    samples_per_gpu=16,
+    workers_per_gpu=4,
     train=dict(
         sup=dict(
             type="CocoDataset",
@@ -20,6 +20,16 @@ data = dict(
             img_prefix="data/VisDrone/VisDrone2019-DET-train/images",
         ),
     ),
+    val=dict(
+        type="CocoDataset",
+        classes=classes,
+        ann_file=data_root + 'annotations/val.json',
+        img_prefix=data_root + 'VisDrone2019-DET-val/images/'),
+    test=dict(
+        type="CocoDataset",
+        classes=classes,
+        ann_file=data_root + 'annotations/val.json',
+        img_prefix=data_root + 'VisDrone2019-DET-val/images/'),
     sampler=dict(
         train=dict(
             sample_ratio=[1, 4],
