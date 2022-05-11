@@ -281,9 +281,9 @@ custom_hooks = [
 ]
 evaluation = dict(type="SubModulesDistEvalHook", interval=400)
 optimizer = dict(type="SGD", lr=0.001, momentum=0.9, weight_decay=0.0001)
-lr_config = dict(step=[5600, 6400])
-runner = dict(_delete_=True, type="IterBasedRunner", max_iters=8000)
-checkpoint_config = dict(by_epoch=False, interval=400, max_keep_ckpts=20)
+lr_config = dict(step=[16800, 19200])
+runner = dict(_delete_=True, type="IterBasedRunner", max_iters=24000)
+checkpoint_config = dict(by_epoch=False, interval=800, max_keep_ckpts=20)
 
 fp16 = dict(loss_scale="dynamic")
 
