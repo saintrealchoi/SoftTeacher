@@ -16,8 +16,6 @@ from mmdet.models import build_detector
 
 from ssod.utils import patch_config
 
-from sahi.model import MmdetDetectionModel
-from sahi.predict import get_prediction, get_sliced_prediction, predict
 
 def parse_args():
     parser = argparse.ArgumentParser(description="MMDet test (and eval) a model")
@@ -205,14 +203,6 @@ def main():
     # build the model and load checkpoint
     cfg.model.train_cfg = None
     model = build_detector(cfg.model, test_cfg=cfg.get("test_cfg"))
-    # sahi model build
-    model2 = MmdetDetectionModel(
-        model_path=args.checkpoint,
-        config_path=cfg,
-        confidence_threshold=0.10,
-        device=torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    )
-
     fp16_cfg = cfg.get("fp16", None)
     if fp16_cfg is not None:
         wrap_fp16_model(model)
@@ -237,11 +227,10 @@ def main():
             device_ids=[torch.cuda.current_device()],
             broadcast_buffers=False,
         )
-        outputs = multi_gpu_test(model, model2, data_loader, args.tmpdir, args.gpu_collect)
-    
+        outputs = multi_gpu_test(model, data_loader, args.tmpdir, args.gpu_collect)
+
     rank, _ = get_dist_info()
     if rank == 0:
-        mmcv.dump(outputs, "/home/choisj/Desktop/outputs_sahi_10.pkl")
         if args.out:
             print(f"\nwriting results to {args.out}")
             mmcv.dump(outputs, args.out)
