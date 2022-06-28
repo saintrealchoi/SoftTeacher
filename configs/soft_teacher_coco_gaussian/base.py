@@ -13,11 +13,6 @@ model = dict(
         init_cfg=dict(
             type="Pretrained", checkpoint="open-mmlab://detectron2/resnet50_caffe"
         ),
-    ),
-    roi_head=dict(
-        bbox_head=dict(
-            num_classes=10
-        )
     )
 )
 
@@ -42,36 +37,6 @@ train_pipeline = [
             ],
         ],
     ),
-    # dict(
-    #     type="Sequential",
-    #     transforms=[
-    #         dict(
-    #             type="RandResize",
-    #             img_scale=[(1333, 400), (1333, 1200)],
-    #             multiscale_mode="range",
-    #             keep_ratio=True,
-    #         ),
-    #         dict(type="RandFlip", flip_ratio=0.5),
-    #         dict(
-    #             type="OneOf",
-    #             transforms=[
-    #                 dict(type=k)
-    #                 for k in [
-    #                     "Identity",
-    #                     "AutoContrast",
-    #                     "RandEqualize",
-    #                     "RandSolarize",
-    #                     "RandColor",
-    #                     "RandContrast",
-    #                     "RandBrightness",
-    #                     "RandSharpness",
-    #                     "RandPosterize",
-    #                 ]
-    #             ],
-    #         ),
-    #     ],
-    #     record=True,
-    # ),
     dict(type="Pad", size_divisor=32),
     dict(type="Normalize", **img_norm_cfg),
     dict(type="ExtraAttrs", tag="sup"),
@@ -278,31 +243,13 @@ custom_hooks = [
     dict(type="WeightSummary"),
     dict(type="MeanTeacher", momentum=0.999, interval=1, warm_up=0),
 ]
-evaluation = dict(type="SubModulesDistEvalHook", interval=400)
-optimizer = dict(type="SGD", lr=0.002, momentum=0.9, weight_decay=0.0001)
-lr_config = dict(policy="step", warmup="constant", warmup_iters=500, warmup_ratio=1.0 / 3, step=[16, 22])
-runner = dict(type="EpochBasedRunner", max_epochs=24)
-checkpoint_config = dict(interval=1, max_keep_ckpts=10, save_optimizer=False)
+evaluation = dict(type="SubModulesDistEvalHook", interval=4000)
+optimizer = dict(type="SGD", lr=0.01, momentum=0.9, weight_decay=0.0001)
+lr_config = dict(step=[120000, 160000])
+runner = dict(_delete_=True, type="IterBasedRunner", max_iters=180000)
+checkpoint_config = dict(by_epoch=False, interval=4000, max_keep_ckpts=20)
 
 fp16 = dict(loss_scale="dynamic")
 
-log_config = dict(
-    interval=20,
-    hooks=[
-        dict(type="TextLoggerHook", by_epoch=False),
-        dict(
-            type="WandbLoggerHook",
-            init_kwargs=dict(
-                project="pre_release",
-                name="FINAL",
-                config=dict(
-                    work_dirs="${work_dir}",
-                    total_step="${runner.max_iters}",
-                ),
-            ),
-            by_epoch=False,
-        ),
-    ],
-)
 
-load_from="/home/sungjin/SoftTeacher/work_dirs/weight/iter_180000.pth"
+# load_from="/home/sungjin/SoftTeacher/work_dirs/weight/iter_180000.pth"
