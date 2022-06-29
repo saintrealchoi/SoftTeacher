@@ -4,32 +4,32 @@ classes = ('pedestrian','people','bicycle','car','van','truck','tricycle','awnin
 data_root = 'data/VisDrone/'
 
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
         sup=dict(
             type="CocoDataset",
             classes = classes,
             ann_file="data/VisDrone/annotations/semi_supervised/instances_train2021.${fold}@${percent}.json",
-            img_prefix="data/VisDrone/VisDrone2019-DET-train/images",
+            img_prefix="data/VisDrone/VisDrone2019-DET-train/",
         ),
         unsup=dict(
             type="CocoDataset",
             classes = classes,
             ann_file="data/VisDrone/annotations/semi_supervised/instances_train2021.${fold}@${percent}-unlabeled.json",
-            img_prefix="data/VisDrone/VisDrone2019-DET-train/images",
+            img_prefix="data/VisDrone/VisDrone2019-DET-train/",
         ),
     ),
     val=dict(
         type="CocoDataset",
         classes=classes,
         ann_file=data_root + 'annotations/val.json',
-        img_prefix=data_root + 'VisDrone2019-DET-val/images/'),
+        img_prefix=data_root + 'VisDrone2019-DET-val/'),
     test=dict(
         type="CocoDataset",
         classes=classes,
         ann_file=data_root + 'annotations/val.json',
-        img_prefix=data_root + 'VisDrone2019-DET-val/images/'),
+        img_prefix=data_root + 'VisDrone2019-DET-val/'),
     sampler=dict(
         train=dict(
             sample_ratio=[1, 4],

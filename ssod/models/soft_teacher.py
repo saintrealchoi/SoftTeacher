@@ -411,32 +411,19 @@ class SoftTeacher(MultiSteamDetector):
     def compute_uncertainty_with_aug(
         self, feat, img_metas, proposal_list, proposal_label_list
     ):
-        auged_proposal_list = self.aug_box(
-            proposal_list, self.train_cfg.jitter_times, self.train_cfg.jitter_scale
-        )
-        # flatten
-        auged_proposal_list = [
-            auged.reshape(-1, auged.shape[-1]) for auged in auged_proposal_list
-        ]
-
-        bboxes, _ = self.teacher.roi_head.simple_test_bboxes(
+        # Not Jittering!
+        bboxes, _, bboxes_var = self.teacher.roi_head.simple_test_bboxes_gaussian(
             feat,
             img_metas,
-            auged_proposal_list,
+            proposal_list,
             None,
             rescale=False,
         )
+        # reg_channel = 10
         reg_channel = max([bbox.shape[-1] for bbox in bboxes]) // 4
-        bboxes = [
-            bbox.reshape(self.train_cfg.jitter_times, -1, bbox.shape[-1])
-            if bbox.numel() > 0
-            else bbox.new_zeros(self.train_cfg.jitter_times, 0, 4 * reg_channel).float()
-            for bbox in bboxes
-        ]
 
-        box_unc = [bbox.std(dim=0) for bbox in bboxes]
-        bboxes = [bbox.mean(dim=0) for bbox in bboxes]
-        # scores = [score.mean(dim=0) for score in scores]
+        box_unc = bboxes_var
+
         if reg_channel != 1:
             bboxes = [
                 bbox.reshape(bbox.shape[0], reg_channel, 4)[

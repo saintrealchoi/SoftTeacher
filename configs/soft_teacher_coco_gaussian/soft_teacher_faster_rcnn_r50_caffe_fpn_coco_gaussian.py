@@ -40,19 +40,19 @@ log_config = dict(
     interval=50,
     hooks=[
         dict(type="TextLoggerHook"),
-        dict(
-            type="WandbLoggerHook",
-            init_kwargs=dict(
-                project="GaussianTeacher",
-                name="COCO_Gaussian_FRCNN_WO_JITTER",
-                config=dict(
-                    fold="${fold}",
-                    percent="${percent}",
-                    work_dirs="${work_dir}",
-                    total_step="${runner.max_iters}",
-                ),
-            ),
-            by_epoch=False,
-        ),
+        # dict(
+        #     type="WandbLoggerHook",
+        #     init_kwargs=dict(
+        #         project="GaussianTeacher",
+        #         name="COCO_Gaussian_FRCNN_WO_JITTER",
+        #         config=dict(
+        #             fold="${fold}",
+        #             percent="${percent}",
+        #             work_dirs="${work_dir}",
+        #             total_step="${runner.max_iters}",
+        #         ),
+        #     ),
+        #     by_epoch=False,
+        # ),
     ],
 )

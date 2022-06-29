@@ -280,9 +280,9 @@ custom_hooks = [
 ]
 evaluation = dict(type="SubModulesDistEvalHook", interval=400)
 optimizer = dict(type="SGD", lr=0.002, momentum=0.9, weight_decay=0.0001)
-lr_config = dict(policy="step", warmup="constant", warmup_iters=500, warmup_ratio=1.0 / 3, step=[16, 22])
-runner = dict(type="EpochBasedRunner", max_epochs=24)
-checkpoint_config = dict(interval=1, max_keep_ckpts=10, save_optimizer=False)
+lr_config = dict(step=[32000, 34000])
+runner = dict(_delete_=True, type="IterBasedRunner", max_iters=36000)
+checkpoint_config = dict(by_epoch=False, interval=400, max_keep_ckpts=20)
 
 fp16 = dict(loss_scale="dynamic")
 
@@ -305,4 +305,4 @@ log_config = dict(
     ],
 )
 
-load_from="/home/sungjin/SoftTeacher/work_dirs/weight/iter_180000.pth"
+# load_from="/home/sungjin/SoftTeacher/work_dirs/weight/iter_180000.pth"
