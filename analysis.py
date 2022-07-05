@@ -7,8 +7,10 @@ from numpy.linalg import inv
 import torch
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from mmdet.core.evaluation.bbox_overlaps import bbox_overlaps
 
-
+ious = [ list() for i in range(3) ]
+    
 def bbox2points(box):
     min_x, min_y, max_x, max_y = torch.split(box[:, :4], [1, 1, 1, 1], dim=1)
 
@@ -37,9 +39,13 @@ def points2bbox(point, max_w, max_h):
 ttl_bbox = []
 GT_Bbox = []
 
+
 def return_pseudo_bbox(dir_name,train,i):
     img = cv2.imread(os.path.join('data','VisDrone','VisDrone2019-DET-train',train['images'][i]['file_name']))
     # img= cv2.flip(img,1)
+
+    with open(os.path.join('work_dirs','pseudo_label',train['images'][i]['file_name'].split('/')[-1][:-4]+'.json'),'r') as ann:
+        json_file_test = json.load(ann)
 
     with open(os.path.join('work_dirs',dir_name,train['images'][i]['file_name'].split('/')[-1][:-4]+'.json'),'r') as ann:
         json_file = json.load(ann)
@@ -49,13 +55,19 @@ def return_pseudo_bbox(dir_name,train,i):
     gt_ann.close()
 
     bboxes = json_file['ann']
+    
     transform_matrix = json_file['tm']
+    test = json_file_test['tm']
+    test = np.array(test)
+    test = inv(test)
+    test = torch.from_numpy(test)
     rev = np.array(transform_matrix)
     rev = inv(rev)
     rev = torch.from_numpy(rev)
 
     ttl_bbox.append(len(bboxes))
     # print("{} have {} bboxes".format(train['images'][i]['file_name'].split('/')[-1],len(bboxes)))
+    for_show = []
     for bbox in bboxes:
         # print(bbox)
         bbox = np.array(bbox)
@@ -65,26 +77,32 @@ def return_pseudo_bbox(dir_name,train,i):
         points = torch.cat(
             [points, points.new_ones(points.shape[0], 1)], dim=1
         )  # n,3
-        points = torch.matmul(rev, points.t()).t()
+        if dir_name != "pseudo_label":
+            points = torch.matmul(test, points.t()).t()
+        else:
+            points = torch.matmul(rev, points.t()).t()
         points = points[:, :2] / points[:, 2:3]
         bbox = points2bbox(points, 1600, 1600)
         bbox = bbox.cpu().detach().numpy()
         bbox = bbox[0]
+        for_show.append(bbox)
 
         cv2.rectangle(img,(int(bbox[0]),int(bbox[1])),(int(bbox[2]),int(bbox[3])),(0,0,255),2)
         cv2.putText(img,'Pseudo',(int(bbox[0]),int(bbox[1])),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,255),1)
     GT_Bbox.append(len(gt))
     # print("{} have {} GT bboxes".format(train['images'][i]['file_name'].split('/')[-1],len(gt)))
-
+    GT_show = []
     for line in gt:
         bbox = line.split(',')
         x,y,w,h = bbox[:4]
         x1,y1,x2,y2 = int(x),int(y),int(x)+int(w),int(y)+int(h)
         cv2.rectangle(img,(x1,y1),(x2,y2),(255,0,0),1)
         # cv2.putText(img,'GT',(x1,y2),cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),1)
-        
+        GT_show.append([x1,y1,x2,y2])
     ann.close()
-    return img,len(bboxes)
+    if len(bboxes) == 0:
+        return img,0,for_show,GT_show
+    return img,len(bboxes),for_show,GT_show
     
 def show_pseudo_bbox(train):
     dir_name = ['pseudo_label','cls','reg']
@@ -96,20 +114,59 @@ def show_pseudo_bbox(train):
             for j,dir in enumerate(dir_name):
                 fig.add_subplot(rows,columns,j+1)
 
-                img,num = return_pseudo_bbox(dir,train,i)
+                img,num,bboxes,GT_show = return_pseudo_bbox(dir,train,i)
+                if num == 0:
+                    GT_show = np.array(GT_show)
+                    ious[j].append(0)
+                    plt.imshow(img)
+                    plt.axis('off')
+                    plt.title(dir_name[j]+": {}".format(num))
+                    print("There is no bbox")
+                    # print("{}, {} : {}".format(train['images'][i]['file_name'],j,0))    
+                    continue
+                bboxes = np.array(bboxes)
+                bboxes = bboxes[:,:4]
+                
+                GT_show = np.array(GT_show)
+                value = bbox_overlaps(bboxes,GT_show)
+                maximum_value = np.max(value,axis=0)
+                idx = np.nonzero(maximum_value)
+                maximum_value = maximum_value[idx]
+
+                if len(maximum_value) == 0:
+                    # print("{}, {} : {}".format(train['images'][i]['file_name'],j,0))    
+                    ious[j].append(0)
+                    plt.imshow(img)
+                    plt.axis('off')
+                    plt.title(dir_name[j]+": {}".format(num))
+                    print("There is no BBox calculated")
+                    continue
+
+                # print("{}, {} : {}".format(train['images'][i]['file_name'],j,np.average(maximum_value)))    
+                ious[j].append(np.average(maximum_value))
                 plt.imshow(img)
                 plt.axis('off')
                 plt.title(dir_name[j]+": {}".format(num))
-            fig.tight_layout()
 
-            plt.show()
+            fig.tight_layout()
+            # plt.show()
+            plt.close()
+
+        # if i == 50:
+        #     break
 
 def main():
     with open('data/VisDrone/annotations/train.json','r') as filename:
         train = json.load(filename)
     show_pseudo_bbox(train)
-    print("Average PseudoBBox Num : {}".format(len(ttl_bbox)/3))
-    print("Average GT Num : {}".format(len(GT_Bbox)/3))
-
+    # print("Average PseudoBBox Num : {}".format(sum(ttl_bbox)/3))
+    # print("Average GT Num : {}".format(sum(GT_Bbox)/3))
+    # print("Average ious")
+    # print(ious[0])
+    # print(ious[1])
+    # print(ious[2])
+    print(np.average(np.array(ious[0])))
+    print(np.average(np.array(ious[1])))
+    print(np.average(np.array(ious[2])))
 if __name__ == '__main__':
     main()
