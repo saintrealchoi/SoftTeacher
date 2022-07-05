@@ -247,7 +247,7 @@ semi_wrapper = dict(
         reg_pseudo_threshold=0.02,
         jitter_times=10,
         jitter_scale=0.06,
-        min_pseduo_box_size=0,
+        min_pseduo_box_size=1,
         unsup_weight=4.0,
     ),
     test_cfg=dict(inference_on="student"),

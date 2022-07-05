@@ -84,7 +84,7 @@ def retrieve_data_cfg(config_path, skip_type, cfg_options):
     train_data_cfg = cfg.data.train
     while "dataset" in train_data_cfg:
         train_data_cfg = train_data_cfg["dataset"]
-    train_data_cfg["pipeline"] = remove_pipe(train_data_cfg["pipeline"], skip_type)
+    # train_data_cfg["pipeline"] = remove_pipe(train_data_cfg["pipeline"], skip_type)
     return cfg
 
 

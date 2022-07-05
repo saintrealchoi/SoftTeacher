@@ -46,7 +46,7 @@ def train_detector(
     model, dataset, cfg, distributed=False, validate=False, timestamp=None, meta=None
 ):
     logger = get_root_logger(log_level=cfg.log_level)
-
+    # model.eval()
     # prepare data loaders
     dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
     if "imgs_per_gpu" in cfg.data:

@@ -26,6 +26,8 @@ figures
 cp.py
 
 # Pytorch
+weight
+weight/
 *.pth
 *.py~
 *.sh~

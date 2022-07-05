@@ -125,6 +125,7 @@ class SoftTeacher(MultiSteamDetector):
                 teacher_info["img_metas"],
                 teacher_info["backbone_feature"],
                 student_info=student_info,
+                test_bbox = teacher_info["det_bboxes"],
             )
         )
         loss.update(
@@ -135,6 +136,7 @@ class SoftTeacher(MultiSteamDetector):
                 pseudo_bboxes,
                 pseudo_labels,
                 student_info=student_info,
+                test_bbox = teacher_info["det_bboxes"],
             )
         )
         return loss
@@ -198,6 +200,7 @@ class SoftTeacher(MultiSteamDetector):
         teacher_img_metas,
         teacher_feat,
         student_info=None,
+        test_bbox=None,
         **kwargs,
     ):
         gt_bboxes, gt_labels, _ = multi_apply(
@@ -206,10 +209,18 @@ class SoftTeacher(MultiSteamDetector):
             pseudo_labels,
             [bbox[:, 4] for bbox in pseudo_bboxes],
             thr=self.train_cfg.cls_pseudo_threshold,
+            min_size=self.train_cfg.min_pseduo_box_size,
+        )
+        test_gt_bboxes, test_gt_labels, _ = multi_apply(
+            filter_invalid,
+            [bbox[:, :4] for bbox in test_bbox],
+            pseudo_labels,
+            [bbox[:, 4] for bbox in test_bbox],
+            thr=self.train_cfg.cls_pseudo_threshold,
         )
 
         d = {}
-        analysis_file = copy.deepcopy(gt_bboxes[0])
+        analysis_file = copy.deepcopy(test_gt_bboxes[0])
         transf = copy.deepcopy(teacher_transMat)
         transfs = copy.deepcopy(student_transMat)
         d['ann'] = analysis_file.cpu().detach().numpy().tolist()
@@ -240,6 +251,9 @@ class SoftTeacher(MultiSteamDetector):
             M,
             [meta["img_shape"] for meta in teacher_img_metas],
         )
+
+
+
         with torch.no_grad():
             _, _scores = self.teacher.roi_head.simple_test_bboxes(
                 teacher_feat,
@@ -284,6 +298,7 @@ class SoftTeacher(MultiSteamDetector):
         pseudo_bboxes,
         pseudo_labels,
         student_info=None,
+        test_bbox=None,
         **kwargs,
     ):
         gt_bboxes, gt_labels, _ = multi_apply(
@@ -293,8 +308,15 @@ class SoftTeacher(MultiSteamDetector):
             [-bbox[:, 5:].mean(dim=-1) for bbox in pseudo_bboxes],
             thr=-self.train_cfg.reg_pseudo_threshold,
         )
+        test_gt_bboxes, test_gt_labels, _ = multi_apply(
+            filter_invalid,
+            [bbox[:, :4] for bbox in test_bbox],
+            pseudo_labels,
+            [-bbox[:, 5:].mean(dim=-1) for bbox in test_bbox],
+            thr=-self.train_cfg.reg_pseudo_threshold,
+        )
         d = {}
-        analysis_file = copy.deepcopy(gt_bboxes[0])
+        analysis_file = copy.deepcopy(test_gt_bboxes[0])
         transf = copy.deepcopy(student_info['transform_matrix'][0])
         d['ann'] = analysis_file.cpu().detach().numpy().tolist()
         d['tm'] = transf.cpu().detach().numpy().tolist()
@@ -399,6 +421,8 @@ class SoftTeacher(MultiSteamDetector):
         if isinstance(self.train_cfg.pseudo_label_initial_score_thr, float):
             #how about 5%?
             thr = 0.05
+            # thr = self.train_cfg.pseudo_label_initial_score_thr
+
         else:
             # TODO: use dynamic threshold
             raise NotImplementedError("Dynamic Threshold is not implemented yet.")

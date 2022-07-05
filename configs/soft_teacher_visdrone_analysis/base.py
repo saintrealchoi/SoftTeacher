@@ -278,11 +278,11 @@ custom_hooks = [
     dict(type="WeightSummary"),
     dict(type="MeanTeacher", momentum=0.999, interval=1, warm_up=0),
 ]
-evaluation = dict(type="SubModulesDistEvalHook", interval=400)
-optimizer = dict(type="SGD", lr=0.002, momentum=0.9, weight_decay=0.0001)
+evaluation = dict(type="SubModulesDistEvalHook", interval=5825)
+optimizer = dict(type="SGD", lr=0.000000002, momentum=0.9, weight_decay=0.0001)
 lr_config = dict(step=[32000, 34000])
 runner = dict(_delete_=True, type="IterBasedRunner", max_iters=36000)
-checkpoint_config = dict(by_epoch=False, interval=400, max_keep_ckpts=20)
+checkpoint_config = dict(by_epoch=False, interval=30000, max_keep_ckpts=20)
 
 fp16 = dict(loss_scale="dynamic")
 
@@ -305,4 +305,9 @@ log_config = dict(
     ],
 )
 
-# load_from="/home/sungjin/SoftTeacher/work_dirs/weight/iter_180000.pth"
+# training
+# load_from="/home/choisj/git/test/SoftTeacher/weight/iter_30800.pth"
+# before
+# load_from="/home/choisj/Downloads/weight/iter_180000.pth"
+# 205 training(jittered)
+load_from="/home/choisj/git/test/SoftTeacher/weight/205_iter_35200.pth"
