@@ -73,13 +73,6 @@ class SoftTeacher(MultiSteamDetector):
                 else None,
             )
         student_info = self.extract_student_info(**student_data)
-        d = {}
-        analysis_file = copy.deepcopy(teacher_info['det_bboxes'][0])
-        transf = copy.deepcopy(teacher_info['transform_matrix'][0])
-        d['ann'] = analysis_file.cpu().detach().numpy().tolist()
-        d['tm'] = transf.cpu().detach().numpy().tolist()
-        with open('/home/choisj/git/test/SoftTeacher/work_dirs/pseudo_label/{}'.format(tnames[0].split('/')[-1][:-3]+'json'),'w') as outfile:
-            json.dump(d,outfile)
 
         return self.compute_pseudo_label_loss(student_info, teacher_info)
 
@@ -208,17 +201,6 @@ class SoftTeacher(MultiSteamDetector):
             thr=self.train_cfg.cls_pseudo_threshold,
         )
 
-        d = {}
-        analysis_file = copy.deepcopy(gt_bboxes[0])
-        transf = copy.deepcopy(teacher_transMat)
-        transfs = copy.deepcopy(student_transMat)
-        d['ann'] = analysis_file.cpu().detach().numpy().tolist()
-        d['tm'] = transfs[0].cpu().detach().numpy().tolist()
-        with open('/home/choisj/git/test/SoftTeacher/work_dirs/cls/{}'.format(img_metas[0]['filename'].split('/')[-1][:-3]+'json'),'w') as outfile:
-            json.dump(d,outfile)
-
-
-
         log_every_n(
             {"rcnn_cls_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
@@ -293,13 +275,7 @@ class SoftTeacher(MultiSteamDetector):
             [-bbox[:, 5:].mean(dim=-1) for bbox in pseudo_bboxes],
             thr=-self.train_cfg.reg_pseudo_threshold,
         )
-        d = {}
-        analysis_file = copy.deepcopy(gt_bboxes[0])
-        transf = copy.deepcopy(student_info['transform_matrix'][0])
-        d['ann'] = analysis_file.cpu().detach().numpy().tolist()
-        d['tm'] = transf.cpu().detach().numpy().tolist()
-        with open('/home/choisj/git/test/SoftTeacher/work_dirs/reg/{}'.format(img_metas[0]['filename'].split('/')[-1][:-3]+'json'),'w') as outfile:
-            json.dump(d,outfile)
+        
         log_every_n(
             {"rcnn_reg_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
