@@ -119,7 +119,6 @@ class SoftTeacher(MultiSteamDetector):
                 teacher_info["img_metas"],
                 teacher_info["backbone_feature"],
                 student_info=student_info,
-                test_bbox = teacher_info["det_bboxes"],
             )
         )
         loss.update(
@@ -130,7 +129,6 @@ class SoftTeacher(MultiSteamDetector):
                 pseudo_bboxes,
                 pseudo_labels,
                 student_info=student_info,
-                test_bbox = teacher_info["det_bboxes"],
             )
         )
         return loss
@@ -194,7 +192,6 @@ class SoftTeacher(MultiSteamDetector):
         teacher_img_metas,
         teacher_feat,
         student_info=None,
-        test_bbox=None,
         **kwargs,
     ):
         gt_bboxes, gt_labels, _ = multi_apply(
@@ -202,13 +199,6 @@ class SoftTeacher(MultiSteamDetector):
             [bbox[:, :4] for bbox in pseudo_bboxes],
             pseudo_labels,
             [bbox[:, 4] for bbox in pseudo_bboxes],
-            thr=self.train_cfg.cls_pseudo_threshold,
-        )
-        test_gt_bboxes, test_gt_labels, _ = multi_apply(
-            filter_invalid,
-            [bbox[:, :4] for bbox in test_bbox],
-            pseudo_labels,
-            [bbox[:, 4] for bbox in test_bbox],
             thr=self.train_cfg.cls_pseudo_threshold,
         )
 
@@ -277,7 +267,6 @@ class SoftTeacher(MultiSteamDetector):
         pseudo_bboxes,
         pseudo_labels,
         student_info=None,
-        test_bbox=None,
         **kwargs,
     ):
         gt_bboxes, gt_labels, _ = multi_apply(
