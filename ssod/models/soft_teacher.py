@@ -1,3 +1,4 @@
+
 import torch
 from mmcv.runner.fp16_utils import force_fp32
 from mmdet.core import bbox2roi, multi_apply
@@ -8,8 +9,8 @@ from ssod.utils import log_image_with_boxes, log_every_n
 
 from .multi_stream_detector import MultiSteamDetector
 from .utils import Transform2D, filter_invalid
-import copy
 import json
+import copy
 
 @DETECTORS.register_module()
 class SoftTeacher(MultiSteamDetector):
@@ -54,6 +55,7 @@ class SoftTeacher(MultiSteamDetector):
             )
             unsup_loss = {"unsup_" + k: v for k, v in unsup_loss.items()}
             loss.update(**unsup_loss)
+
         return loss
 
     def foward_unsup_train(self, teacher_data, student_data):
@@ -73,7 +75,6 @@ class SoftTeacher(MultiSteamDetector):
                 else None,
             )
         student_info = self.extract_student_info(**student_data)
-
         return self.compute_pseudo_label_loss(student_info, teacher_info)
 
     def compute_pseudo_label_loss(self, student_info, teacher_info):
@@ -276,6 +277,15 @@ class SoftTeacher(MultiSteamDetector):
             thr=-self.train_cfg.reg_pseudo_threshold,
         )
         
+        # After Variance Filter, Confidence Filtering
+        gt_bboxes, gt_labels, _ = multi_apply(
+            filter_invalid,
+            [bbox[:, :4] for bbox in gt_bboxes],
+            gt_labels,
+            [bbox[:, 4] for bbox in gt_bboxes],
+            thr=self.train_cfg.conf_pseudo_threshold,
+        )
+
         log_every_n(
             {"rcnn_reg_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
@@ -373,8 +383,7 @@ class SoftTeacher(MultiSteamDetector):
         proposal_label_list = [p.to(feat[0].device) for p in proposal_label_list]
         # filter invalid box roughly
         if isinstance(self.train_cfg.pseudo_label_initial_score_thr, float):
-            #how about 5%?
-            thr = 0.05
+            thr = self.train_cfg.pseudo_label_initial_score_thr
         else:
             # TODO: use dynamic threshold
             raise NotImplementedError("Dynamic Threshold is not implemented yet.")

@@ -1,6 +1,7 @@
 import os
 import json
 import cv2
+from matplotlib.font_manager import json_dump
 from ssod.models.utils import Transform2D
 import numpy as np
 from numpy.linalg import inv
@@ -110,17 +111,17 @@ def show_pseudo_bbox(train):
     columns = 3
     for i in range(len(train['images'])):
         if os.path.isfile(os.path.join('work_dirs',dir_name[0],train['images'][i]['file_name'].split('/')[-1][:-4]+'.json')):
-            fig = plt.figure(figsize=(63,21))
+            # fig = plt.figure(figsize=(63,21))
             for j,dir in enumerate(dir_name):
-                fig.add_subplot(rows,columns,j+1)
+                # fig.add_subplot(rows,columns,j+1)
 
                 img,num,bboxes,GT_show = return_pseudo_bbox(dir,train,i)
                 if num == 0:
                     GT_show = np.array(GT_show)
                     ious[j].append(0)
-                    plt.imshow(img)
-                    plt.axis('off')
-                    plt.title(dir_name[j]+": {}".format(num))
+                    # plt.imshow(img)
+                    # plt.axis('off')
+                    # plt.title(dir_name[j]+": {}".format(num))
                     print("There is no bbox")
                     # print("{}, {} : {}".format(train['images'][i]['file_name'],j,0))    
                     continue
@@ -144,15 +145,15 @@ def show_pseudo_bbox(train):
 
                 # print("{}, {} : {}".format(train['images'][i]['file_name'],j,np.average(maximum_value)))    
                 ious[j].append(np.average(maximum_value))
-                plt.imshow(img)
-                plt.axis('off')
-                plt.title(dir_name[j]+": {}".format(num))
+                # plt.imshow(img)
+                # plt.axis('off')
+                # plt.title(dir_name[j]+": {}".format(num))
 
-            fig.tight_layout()
+            # fig.tight_layout()
             # plt.show()
-            plt.close()
+            # plt.close()
 
-        # if i == 50:
+        # if i == 10:
         #     break
 
 def main():
@@ -165,6 +166,16 @@ def main():
     # print(ious[0])
     # print(ious[1])
     # print(ious[2])
+    d = {}
+    ious[1] = [float(data) for data in ious[1]]
+    ious[2] = [float(data) for data in ious[2]]
+    d['cls'] = list(sorted(ious[1]))
+    d['reg'] = list(sorted(ious[2]))
+    with open('test2.json','w') as filename:
+        json.dump(d,filename)    
+    print(sorted(ious[0]))
+    print(sorted(ious[1]))
+    print(sorted(ious[2]))
     print(np.average(np.array(ious[0])))
     print(np.average(np.array(ious[1])))
     print(np.average(np.array(ious[2])))

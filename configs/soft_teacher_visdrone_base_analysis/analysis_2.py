@@ -4,7 +4,7 @@ classes = ('pedestrian','people','bicycle','car','van','truck','tricycle','awnin
 data_root = 'data/VisDrone/'
 
 data = dict(
-    samples_per_gpu=5,
+    samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
         sup=dict(
@@ -38,26 +38,26 @@ data = dict(
 )
 
 fold = 1
-percent = 10
+percent = 1
 
 work_dir = "work_dirs/${cfg_name}/${percent}/${fold}"
 log_config = dict(
     interval=50,
     hooks=[
         dict(type="TextLoggerHook"),
-        dict(
-            type="WandbLoggerHook",
-            init_kwargs=dict(
-                project="pre_release",
-                name="Gaussian_FRCNN_WO_JITTER",
-                config=dict(
-                    fold="${fold}",
-                    percent="${percent}",
-                    work_dirs="${work_dir}",
-                    total_step="${runner.max_iters}",
-                ),
-            ),
-            by_epoch=False,
-        ),
+        # dict(
+        #     type="WandbLoggerHook",
+        #     init_kwargs=dict(
+        #         project="pre_release",
+        #         name="${cfg_name}",
+        #         config=dict(
+        #             fold="${fold}",
+        #             percent="${percent}",
+        #             work_dirs="${work_dir}",
+        #             total_step="${runner.max_iters}",
+        #         ),
+        #     ),
+        #     by_epoch=False,
+        # ),
     ],
 )

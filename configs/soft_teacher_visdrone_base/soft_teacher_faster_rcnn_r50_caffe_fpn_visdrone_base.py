@@ -4,7 +4,7 @@ classes = ('pedestrian','people','bicycle','car','van','truck','tricycle','awnin
 data_root = 'data/VisDrone/'
 
 data = dict(
-    samples_per_gpu=5,
+    samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
         sup=dict(
@@ -38,7 +38,7 @@ data = dict(
 )
 
 fold = 1
-percent = 10
+percent = 1
 
 work_dir = "work_dirs/${cfg_name}/${percent}/${fold}"
 log_config = dict(
@@ -49,7 +49,7 @@ log_config = dict(
             type="WandbLoggerHook",
             init_kwargs=dict(
                 project="pre_release",
-                name="Gaussian_FRCNN_WO_JITTER",
+                name="${cfg_name}",
                 config=dict(
                     fold="${fold}",
                     percent="${percent}",
