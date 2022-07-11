@@ -10,7 +10,7 @@ from mmcv import Config, DictAction
 from mmcv.cnn import fuse_conv_bn
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
 from mmcv.runner import get_dist_info, init_dist, load_checkpoint, wrap_fp16_model
-from mmdet.apis import multi_gpu_test, single_gpu_test
+from mmdet.apis import multi_gpu_test_2, single_gpu_test
 from mmdet.datasets import build_dataloader, build_dataset, replace_ImageToTensor
 from mmdet.models import build_detector
 
@@ -227,7 +227,7 @@ def main():
             device_ids=[torch.cuda.current_device()],
             broadcast_buffers=False,
         )
-        outputs = multi_gpu_test(model, data_loader, args.tmpdir, args.gpu_collect)
+        outputs,outputs_var = multi_gpu_test_2(model, data_loader, args.tmpdir, args.gpu_collect)
 
     rank, _ = get_dist_info()
     if rank == 0:
@@ -251,7 +251,7 @@ def main():
             ]:
                 eval_kwargs.pop(key, None)
             eval_kwargs.update(dict(metric=args.eval, **kwargs))
-            metric = dataset.evaluate(outputs, **eval_kwargs)
+            metric = dataset.evaluate_var(outputs, outputs_var, **eval_kwargs)
             print(metric)
             metric_dict = dict(config=args.config, metric=metric)
             if args.work_dir is not None and rank == 0:
