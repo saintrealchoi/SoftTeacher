@@ -75,17 +75,6 @@ class SoftTeacher(MultiSteamDetector):
                 else None,
             )
         student_info = self.extract_student_info(**student_data)
-<<<<<<< HEAD
-        d = {}
-        analysis_file = copy.deepcopy(teacher_info['det_bboxes'][0])
-        transf = copy.deepcopy(teacher_info['transform_matrix'][0])
-        d['ann'] = analysis_file.cpu().detach().numpy().tolist()
-        d['tm'] = transf.cpu().detach().numpy().tolist()
-        with open('/home/choisj/git/test/SoftTeacher/work_dirs/pseudo_label/{}'.format(tnames[0].split('/')[-1][:-3]+'json'),'w') as outfile:
-            json.dump(d,outfile)
-=======
-
->>>>>>> 0528eb060c7327aa066453b7e87a2ce2195a8873
         return self.compute_pseudo_label_loss(student_info, teacher_info)
 
     def compute_pseudo_label_loss(self, student_info, teacher_info):
@@ -223,18 +212,6 @@ class SoftTeacher(MultiSteamDetector):
             thr=self.train_cfg.cls_pseudo_threshold,
         )
 
-<<<<<<< HEAD
-        d = {}
-        analysis_file = copy.deepcopy(test_gt_bboxes[0])
-        transf = copy.deepcopy(teacher_transMat)
-        transfs = copy.deepcopy(student_transMat)
-        d['ann'] = analysis_file.cpu().detach().numpy().tolist()
-        d['tm'] = transfs[0].cpu().detach().numpy().tolist()
-        with open('/home/choisj/git/test/SoftTeacher/work_dirs/cls/{}'.format(img_metas[0]['filename'].split('/')[-1][:-3]+'json'),'w') as outfile:
-            json.dump(d,outfile)
-
-=======
->>>>>>> 0528eb060c7327aa066453b7e87a2ce2195a8873
         log_every_n(
             {"rcnn_cls_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
@@ -310,24 +287,7 @@ class SoftTeacher(MultiSteamDetector):
             [-bbox[:, 5:].mean(dim=-1) for bbox in pseudo_bboxes],
             thr=-self.train_cfg.reg_pseudo_threshold,
         )
-<<<<<<< HEAD
-        test_gt_bboxes, test_gt_labels, _ = multi_apply(
-            filter_invalid,
-            [bbox[:, :4] for bbox in test_bbox],
-            pseudo_labels,
-            [-bbox[:, 5:].mean(dim=-1) for bbox in test_bbox],
-            thr=-self.train_cfg.reg_pseudo_threshold,
-        )
-        d = {}
-        analysis_file = copy.deepcopy(test_gt_bboxes[0])
-        transf = copy.deepcopy(student_info['transform_matrix'][0])
-        d['ann'] = analysis_file.cpu().detach().numpy().tolist()
-        d['tm'] = transf.cpu().detach().numpy().tolist()
-        with open('/home/choisj/git/test/SoftTeacher/work_dirs/reg/{}'.format(img_metas[0]['filename'].split('/')[-1][:-3]+'json'),'w') as outfile:
-            json.dump(d,outfile)
-=======
         
->>>>>>> 0528eb060c7327aa066453b7e87a2ce2195a8873
         log_every_n(
             {"rcnn_reg_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
@@ -465,32 +425,19 @@ class SoftTeacher(MultiSteamDetector):
     def compute_uncertainty_with_aug(
         self, feat, img_metas, proposal_list, proposal_label_list
     ):
-        auged_proposal_list = self.aug_box(
-            proposal_list, self.train_cfg.jitter_times, self.train_cfg.jitter_scale
-        )
-        # flatten
-        auged_proposal_list = [
-            auged.reshape(-1, auged.shape[-1]) for auged in auged_proposal_list
-        ]
-
-        bboxes, _ = self.teacher.roi_head.simple_test_bboxes(
+        # Not Jittering!
+        bboxes, _, bboxes_var = self.teacher.roi_head.simple_test_bboxes_gaussian(
             feat,
             img_metas,
-            auged_proposal_list,
+            proposal_list,
             None,
             rescale=False,
         )
+        # reg_channel = 10
         reg_channel = max([bbox.shape[-1] for bbox in bboxes]) // 4
-        bboxes = [
-            bbox.reshape(self.train_cfg.jitter_times, -1, bbox.shape[-1])
-            if bbox.numel() > 0
-            else bbox.new_zeros(self.train_cfg.jitter_times, 0, 4 * reg_channel).float()
-            for bbox in bboxes
-        ]
 
-        box_unc = [bbox.std(dim=0) for bbox in bboxes]
-        bboxes = [bbox.mean(dim=0) for bbox in bboxes]
-        # scores = [score.mean(dim=0) for score in scores]
+        box_unc = bboxes_var
+
         if reg_channel != 1:
             bboxes = [
                 bbox.reshape(bbox.shape[0], reg_channel, 4)[
