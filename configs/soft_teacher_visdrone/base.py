@@ -42,36 +42,6 @@ train_pipeline = [
             ],
         ],
     ),
-    # dict(
-    #     type="Sequential",
-    #     transforms=[
-    #         dict(
-    #             type="RandResize",
-    #             img_scale=[(1333, 400), (1333, 1200)],
-    #             multiscale_mode="range",
-    #             keep_ratio=True,
-    #         ),
-    #         dict(type="RandFlip", flip_ratio=0.5),
-    #         dict(
-    #             type="OneOf",
-    #             transforms=[
-    #                 dict(type=k)
-    #                 for k in [
-    #                     "Identity",
-    #                     "AutoContrast",
-    #                     "RandEqualize",
-    #                     "RandSolarize",
-    #                     "RandColor",
-    #                     "RandContrast",
-    #                     "RandBrightness",
-    #                     "RandSharpness",
-    #                     "RandPosterize",
-    #                 ]
-    #             ],
-    #         ),
-    #     ],
-    #     record=True,
-    # ),
     dict(type="Pad", size_divisor=32),
     dict(type="Normalize", **img_norm_cfg),
     dict(type="ExtraAttrs", tag="sup"),
@@ -261,10 +231,11 @@ semi_wrapper = dict(
     model="${model}",
     train_cfg=dict(
         use_teacher_proposal=False,
-        pseudo_label_initial_score_thr=0.5,
+        pseudo_label_initial_score_thr=0.05,
         rpn_pseudo_threshold=0.9,
         cls_pseudo_threshold=0.9,
         reg_pseudo_threshold=0.02,
+        conf_pseudo_threshold=0.5,
         jitter_times=10,
         jitter_scale=0.06,
         min_pseduo_box_size=1,

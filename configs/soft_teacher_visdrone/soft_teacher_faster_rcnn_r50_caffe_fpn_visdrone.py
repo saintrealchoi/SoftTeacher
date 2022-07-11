@@ -4,7 +4,7 @@ classes = ('pedestrian','people','bicycle','car','van','truck','tricycle','awnin
 data_root = 'data/VisDrone/'
 
 data = dict(
-    samples_per_gpu=2,
+    samples_per_gpu=5,
     workers_per_gpu=2,
     train=dict(
         sup=dict(

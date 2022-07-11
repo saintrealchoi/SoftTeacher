@@ -277,6 +277,15 @@ class SoftTeacher(MultiSteamDetector):
             thr=-self.train_cfg.reg_pseudo_threshold,
         )
         
+        # After Variance Filter, Confidence Filtering
+        gt_bboxes, gt_labels, _ = multi_apply(
+            filter_invalid,
+            [bbox[:, :4] for bbox in gt_bboxes],
+            gt_labels,
+            [bbox[:, 4] for bbox in gt_bboxes],
+            thr=self.train_cfg.conf_pseudo_threshold,
+        )
+
         log_every_n(
             {"rcnn_reg_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
