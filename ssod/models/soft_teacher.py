@@ -1,5 +1,5 @@
-
 import torch
+import torch.nn as nn
 from mmcv.runner.fp16_utils import force_fp32
 from mmdet.core import bbox2roi, multi_apply
 from mmdet.models import DETECTORS, build_detector
@@ -9,8 +9,7 @@ from ssod.utils import log_image_with_boxes, log_every_n
 
 from .multi_stream_detector import MultiSteamDetector
 from .utils import Transform2D, filter_invalid
-import json
-import copy
+from mmdet.models.builder import build_loss
 
 @DETECTORS.register_module()
 class SoftTeacher(MultiSteamDetector):
@@ -23,6 +22,34 @@ class SoftTeacher(MultiSteamDetector):
         if train_cfg is not None:
             self.freeze("teacher")
             self.unsup_weight = self.train_cfg.unsup_weight
+
+        # for distillation
+        self.distill_losses = nn.ModuleDict()
+        
+        student_modules = dict(self.student.named_modules())
+        teacher_modules = dict(self.teacher.named_modules())
+        def regitster_hooks(student_module,teacher_module):
+            def hook_teacher_forward(module, input, output):
+                    self.register_buffer(teacher_module,output)
+            def hook_student_forward(module, input, output):
+                    self.register_buffer( student_module,output )
+            return hook_teacher_forward,hook_student_forward
+        
+        for item_loc in self.train_cfg.distill_cfg:
+            
+            student_module = 'student_' + item_loc.student_module.replace('.','_')
+            teacher_module = 'teacher_' + item_loc.teacher_module.replace('.','_')
+
+            self.register_buffer(student_module,None)
+            self.register_buffer(teacher_module,None)
+
+            hook_teacher_forward,hook_student_forward = regitster_hooks(student_module ,teacher_module )
+            teacher_modules[item_loc.teacher_module].register_forward_hook(hook_teacher_forward)
+            student_modules[item_loc.student_module].register_forward_hook(hook_student_forward)
+
+            for item_loss in item_loc.methods:
+                loss_name = item_loss.name
+                self.distill_losses[loss_name] = build_loss(item_loss)
 
     def forward_train(self, img, img_metas, **kwargs):
         super().forward_train(img, img_metas, **kwargs)
@@ -44,8 +71,24 @@ class SoftTeacher(MultiSteamDetector):
                 {"sup_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
             )
             sup_loss = self.student.forward_train(**data_groups["sup"])
+
+            with torch.no_grad():
+                fea_t = self.teacher.extract_feat(img)
+
+            buffer_dict = dict(self.named_buffers())
+
+            for item_loc in self.train_cfg.distill_cfg:
+                student_module = 'student_' + item_loc.student_module.replace('.','_')
+                teacher_module = 'teacher_' + item_loc.teacher_module.replace('.','_')
+                student_feat = buffer_dict[student_module]
+                teacher_feat = buffer_dict[teacher_module]
+                for item_loss in item_loc.methods:
+                    loss_name = item_loss.name
+                    sup_loss[loss_name] = self.distill_losses[loss_name](student_feat,teacher_feat)
+
             sup_loss = {"sup_" + k: v for k, v in sup_loss.items()}
             loss.update(**sup_loss)
+
         if "unsup_student" in data_groups:
             unsup_loss = weighted_loss(
                 self.foward_unsup_train(
@@ -75,6 +118,7 @@ class SoftTeacher(MultiSteamDetector):
                 else None,
             )
         student_info = self.extract_student_info(**student_data)
+
         return self.compute_pseudo_label_loss(student_info, teacher_info)
 
     def compute_pseudo_label_loss(self, student_info, teacher_info):
@@ -201,7 +245,6 @@ class SoftTeacher(MultiSteamDetector):
             [bbox[:, 4] for bbox in pseudo_bboxes],
             thr=self.train_cfg.cls_pseudo_threshold,
         )
-
         log_every_n(
             {"rcnn_cls_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
@@ -276,16 +319,6 @@ class SoftTeacher(MultiSteamDetector):
             [-bbox[:, 5:].mean(dim=-1) for bbox in pseudo_bboxes],
             thr=-self.train_cfg.reg_pseudo_threshold,
         )
-        
-        # After Variance Filter, Confidence Filtering
-        gt_bboxes, gt_labels, _ = multi_apply(
-            filter_invalid,
-            [bbox[:, :4] for bbox in gt_bboxes],
-            gt_labels,
-            [bbox[:, 4] for bbox in gt_bboxes],
-            thr=self.train_cfg.conf_pseudo_threshold,
-        )
-
         log_every_n(
             {"rcnn_reg_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
@@ -423,19 +456,32 @@ class SoftTeacher(MultiSteamDetector):
     def compute_uncertainty_with_aug(
         self, feat, img_metas, proposal_list, proposal_label_list
     ):
-        # Not Jittering!
-        bboxes, _, bboxes_var = self.teacher.roi_head.simple_test_bboxes_gaussian(
+        auged_proposal_list = self.aug_box(
+            proposal_list, self.train_cfg.jitter_times, self.train_cfg.jitter_scale
+        )
+        # flatten
+        auged_proposal_list = [
+            auged.reshape(-1, auged.shape[-1]) for auged in auged_proposal_list
+        ]
+
+        bboxes, _ = self.teacher.roi_head.simple_test_bboxes(
             feat,
             img_metas,
-            proposal_list,
+            auged_proposal_list,
             None,
             rescale=False,
         )
-        # reg_channel = 10
         reg_channel = max([bbox.shape[-1] for bbox in bboxes]) // 4
+        bboxes = [
+            bbox.reshape(self.train_cfg.jitter_times, -1, bbox.shape[-1])
+            if bbox.numel() > 0
+            else bbox.new_zeros(self.train_cfg.jitter_times, 0, 4 * reg_channel).float()
+            for bbox in bboxes
+        ]
 
-        box_unc = bboxes_var
-
+        box_unc = [bbox.std(dim=0) for bbox in bboxes]
+        bboxes = [bbox.mean(dim=0) for bbox in bboxes]
+        # scores = [score.mean(dim=0) for score in scores]
         if reg_channel != 1:
             bboxes = [
                 bbox.reshape(bbox.shape[0], reg_channel, 4)[

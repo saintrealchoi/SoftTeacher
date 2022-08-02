@@ -236,6 +236,10 @@ data = dict(
     ),
 )
 
+find_unused_parameters=True
+alpha_mgd=0.0000005
+lambda_mgd=0.45
+
 semi_wrapper = dict(
     type="SoftTeacher",
     model="${model}",
@@ -249,9 +253,60 @@ semi_wrapper = dict(
         jitter_scale=0.06,
         min_pseduo_box_size=1,
         unsup_weight=4.0,
+        distill_cfg = [ dict(student_module = 'neck.fpn_convs.3.conv',
+                         teacher_module = 'neck.fpn_convs.3.conv',
+                         output_hook = True,
+                         methods=[dict(type='FeatureLoss',
+                                       name='loss_mgd_fpn_3',
+                                       student_channels = 256,
+                                       teacher_channels = 256,
+                                       alpha_mgd=alpha_mgd,
+                                       lambda_mgd=lambda_mgd,
+                                       )
+                                ]
+                        ),
+                    dict(student_module = 'neck.fpn_convs.2.conv',
+                         teacher_module = 'neck.fpn_convs.2.conv',
+                         output_hook = True,
+                         methods=[dict(type='FeatureLoss',
+                                       name='loss_mgd_fpn_2',
+                                       student_channels = 256,
+                                       teacher_channels = 256,
+                                       alpha_mgd=alpha_mgd,
+                                       lambda_mgd=lambda_mgd,
+                                       )
+                                ]
+                        ),
+                    dict(student_module = 'neck.fpn_convs.1.conv',
+                         teacher_module = 'neck.fpn_convs.1.conv',
+                         output_hook = True,
+                         methods=[dict(type='FeatureLoss',
+                                       name='loss_mgd_fpn_1',
+                                       student_channels = 256,
+                                       teacher_channels = 256,
+                                       alpha_mgd=alpha_mgd,
+                                       lambda_mgd=lambda_mgd,
+                                       )
+                                ]
+                        ),
+                    dict(student_module = 'neck.fpn_convs.0.conv',
+                         teacher_module = 'neck.fpn_convs.0.conv',
+                         output_hook = True,
+                         methods=[dict(type='FeatureLoss',
+                                       name='loss_mgd_fpn_0',
+                                       student_channels = 256,
+                                       teacher_channels = 256,
+                                       alpha_mgd=alpha_mgd,
+                                       lambda_mgd=lambda_mgd,
+                                       )
+                                ]
+                        ),
+                   ]
     ),
     test_cfg=dict(inference_on="student"),
 )
+
+
 
 custom_hooks = [
     dict(type="NumClassCheckHook"),
