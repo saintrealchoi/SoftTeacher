@@ -1,5 +1,5 @@
 from .exts import NamedOptimizerConstructor
-from .hooks import Weighter, MeanTeacher, WeightSummary, SubModulesDistEvalHook
+from .hooks import Weighter, MeanTeacher, WeightSummary, SubModulesDistEvalHook, GetCurrentIter
 from .logger import get_root_logger, log_every_n, log_image_with_boxes
 from .patch import patch_config, patch_runner, find_latest_checkpoint
 
@@ -16,4 +16,5 @@ __all__ = [
     "WeightSummary",
     "SubModulesDistEvalHook",
     "NamedOptimizerConstructor",
+    "GetCurrentIter"
 ]

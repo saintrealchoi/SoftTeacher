@@ -1,8 +1,8 @@
 _base_ = "base.py"
 
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=1,
+    samples_per_gpu=5,
+    workers_per_gpu=5,
     train=dict(
         sup=dict(
             type="CocoDataset",
