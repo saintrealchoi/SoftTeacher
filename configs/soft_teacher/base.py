@@ -236,7 +236,6 @@ data = dict(
     ),
 )
 
-find_unused_parameters=True
 alpha_mgd=0.0000005
 lambda_mgd=0.45
 
