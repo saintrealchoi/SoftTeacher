@@ -1,4 +1,3 @@
-
 import torch
 from mmcv.runner.fp16_utils import force_fp32
 from mmdet.core import bbox2roi, multi_apply
@@ -9,8 +8,7 @@ from ssod.utils import log_image_with_boxes, log_every_n
 
 from .multi_stream_detector import MultiSteamDetector
 from .utils import Transform2D, filter_invalid
-import json
-import copy
+
 
 @DETECTORS.register_module()
 class SoftTeacher(MultiSteamDetector):
@@ -75,6 +73,7 @@ class SoftTeacher(MultiSteamDetector):
                 else None,
             )
         student_info = self.extract_student_info(**student_data)
+
         return self.compute_pseudo_label_loss(student_info, teacher_info)
 
     def compute_pseudo_label_loss(self, student_info, teacher_info):
@@ -201,7 +200,6 @@ class SoftTeacher(MultiSteamDetector):
             [bbox[:, 4] for bbox in pseudo_bboxes],
             thr=self.train_cfg.cls_pseudo_threshold,
         )
-
         log_every_n(
             {"rcnn_cls_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
@@ -276,16 +274,6 @@ class SoftTeacher(MultiSteamDetector):
             [-bbox[:, 5:].mean(dim=-1) for bbox in pseudo_bboxes],
             thr=-self.train_cfg.reg_pseudo_threshold,
         )
-        
-        # After Variance Filter, Confidence Filtering
-        gt_bboxes, gt_labels, _ = multi_apply(
-            filter_invalid,
-            [bbox[:, :4] for bbox in gt_bboxes],
-            gt_labels,
-            [bbox[:, 4] for bbox in gt_bboxes],
-            thr=self.train_cfg.conf_pseudo_threshold,
-        )
-
         log_every_n(
             {"rcnn_reg_gt_num": sum([len(bbox) for bbox in gt_bboxes]) / len(gt_bboxes)}
         )
@@ -423,19 +411,32 @@ class SoftTeacher(MultiSteamDetector):
     def compute_uncertainty_with_aug(
         self, feat, img_metas, proposal_list, proposal_label_list
     ):
-        # Not Jittering!
-        bboxes, _, bboxes_var = self.teacher.roi_head.simple_test_bboxes_gaussian(
+        auged_proposal_list = self.aug_box(
+            proposal_list, self.train_cfg.jitter_times, self.train_cfg.jitter_scale
+        )
+        # flatten
+        auged_proposal_list = [
+            auged.reshape(-1, auged.shape[-1]) for auged in auged_proposal_list
+        ]
+
+        bboxes, _ = self.teacher.roi_head.simple_test_bboxes(
             feat,
             img_metas,
-            proposal_list,
+            auged_proposal_list,
             None,
             rescale=False,
         )
-        # reg_channel = 10
         reg_channel = max([bbox.shape[-1] for bbox in bboxes]) // 4
+        bboxes = [
+            bbox.reshape(self.train_cfg.jitter_times, -1, bbox.shape[-1])
+            if bbox.numel() > 0
+            else bbox.new_zeros(self.train_cfg.jitter_times, 0, 4 * reg_channel).float()
+            for bbox in bboxes
+        ]
 
-        box_unc = bboxes_var
-
+        box_unc = [bbox.std(dim=0) for bbox in bboxes]
+        bboxes = [bbox.mean(dim=0) for bbox in bboxes]
+        # scores = [score.mean(dim=0) for score in scores]
         if reg_channel != 1:
             bboxes = [
                 bbox.reshape(bbox.shape[0], reg_channel, 4)[
