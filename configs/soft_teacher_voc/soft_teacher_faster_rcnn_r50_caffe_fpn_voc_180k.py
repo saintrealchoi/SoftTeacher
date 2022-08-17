@@ -4,8 +4,8 @@ dataset_type = 'VOCDataset'
 data_root = 'data/voc/'
 
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=1,
+    samples_per_gpu=20,
+    workers_per_gpu=10,
     train=dict(
         sup=dict(
             type=dataset_type,
@@ -28,7 +28,7 @@ data = dict(
         img_prefix=data_root + 'VOC2007-test/'),
     sampler=dict(
         train=dict(
-            sample_ratio=[1, 4],
+            sample_ratio=[1, 2],
         )
     ),
 )
@@ -36,24 +36,24 @@ data = dict(
 fold = 1
 percent = 10
 
-work_dir = "work_dirs/${cfg_name}/${percent}/${fold}"
+work_dir = "work_dirs/voc"
 log_config = dict(
     interval=50,
     hooks=[
         dict(type="TextLoggerHook"),
-        # dict(
-        #     type="WandbLoggerHook",
-        #     init_kwargs=dict(
-        #         project="pre_release",
-        #         name="${cfg_name}",
-        #         config=dict(
-        #             fold="${fold}",
-        #             percent="${percent}",
-        #             work_dirs="${work_dir}",
-        #             total_step="${runner.max_iters}",
-        #         ),
-        #     ),
-        #     by_epoch=False,
-        # ),
+        dict(
+            type="WandbLoggerHook",
+            init_kwargs=dict(
+                project="semi-voc",
+                name="${cfg_name}",
+                config=dict(
+                    fold="${fold}",
+                    percent="${percent}",
+                    work_dirs="${work_dir}",
+                    total_step="${runner.max_iters}",
+                ),
+            ),
+            by_epoch=False,
+        ),
     ],
 )
