@@ -1,4 +1,6 @@
 import torch
+import torch.nn as nn
+
 from mmcv.runner.fp16_utils import force_fp32
 from mmdet.core import bbox2roi, multi_apply
 from mmdet.models import DETECTORS, build_detector
@@ -8,6 +10,7 @@ from ssod.utils import log_image_with_boxes, log_every_n
 
 from .multi_stream_detector import MultiSteamDetector
 from .utils import Transform2D, filter_invalid
+from mmdet.models.builder import build_loss
 
 
 @DETECTORS.register_module()
@@ -21,6 +24,34 @@ class SoftTeacher(MultiSteamDetector):
         if train_cfg is not None:
             self.freeze("teacher")
             self.unsup_weight = self.train_cfg.unsup_weight
+
+        # for distillation
+        self.distill_losses = nn.ModuleDict()
+        
+        student_modules = dict(self.student.named_modules())
+        teacher_modules = dict(self.teacher.named_modules())
+        def regitster_hooks(student_module,teacher_module):
+            def hook_teacher_forward(module, input, output):
+                    self.register_buffer(teacher_module,output)
+            def hook_student_forward(module, input, output):
+                    self.register_buffer( student_module,output )
+            return hook_teacher_forward,hook_student_forward
+        
+        for item_loc in self.train_cfg.distill_cfg:
+            
+            student_module = 'student_' + item_loc.student_module.replace('.','_')
+            teacher_module = 'teacher_' + item_loc.teacher_module.replace('.','_')
+
+            self.register_buffer(student_module,None)
+            self.register_buffer(teacher_module,None)
+
+            hook_teacher_forward,hook_student_forward = regitster_hooks(student_module ,teacher_module )
+            teacher_modules[item_loc.teacher_module].register_forward_hook(hook_teacher_forward)
+            student_modules[item_loc.student_module].register_forward_hook(hook_student_forward)
+
+            for item_loss in item_loc.methods:
+                loss_name = item_loss.name
+                self.distill_losses[loss_name] = build_loss(item_loss)
 
     def forward_train(self, img, img_metas, **kwargs):
         super().forward_train(img, img_metas, **kwargs)
@@ -53,7 +84,23 @@ class SoftTeacher(MultiSteamDetector):
             )
             unsup_loss = {"unsup_" + k: v for k, v in unsup_loss.items()}
             loss.update(**unsup_loss)
-
+            
+        with torch.no_grad():
+            fea_t = self.teacher.extract_feat(img)
+            fea_s = self.student.extract_feat(img)
+            
+        buffer_dict = dict(self.named_buffers())
+        distill_loss = {}
+        for item_loc in self.train_cfg.distill_cfg:
+            student_module = 'student_' + item_loc.student_module.replace('.','_')
+            teacher_module = 'teacher_' + item_loc.teacher_module.replace('.','_')
+            student_feat = buffer_dict[student_module]
+            teacher_feat = buffer_dict[teacher_module]
+            for item_loss in item_loc.methods:
+                loss_name = item_loss.name
+                distill_loss[loss_name] = self.distill_losses[loss_name](student_feat,teacher_feat)
+        loss.update(**distill_loss)
+        
         return loss
 
     def foward_unsup_train(self, teacher_data, student_data):
